@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<message_catalog package_key="intranet-helpdesk" package_version="3.4.0.7.0" locale="en_US" charset="ISO-8859-1">
+<message_catalog package_key="intranet-helpdesk" locale="en_US" charset="ISO-8859-1">
 
   <msg key="Action">Action</msg>
   <msg key="Add_a_new_ticket">New Ticket</msg>
@@ -80,9 +80,12 @@
   <msg key="Status">Status</msg>
   <msg key="Telephony_Request">Telephony Request</msg>
   <msg key="Ticket_Details">Ticket Details</msg>
+  <msg key="Ticket_Info">Ticket Info</msg>
   <msg key="Ticket_Members">Ticket Members</msg>
   <msg key="Ticket_Name">Ticket Name</msg>
   <msg key="Ticket_Nr">Ticket Num</msg>
+  <msg key="Ticket_Status">Ticket Status</msg>
+  <msg key="Ticket_Type">Ticket Type</msg>
   <msg key="Ticket_type_Bug_Request">Bug Request</msg>
   <msg key="Ticket_type_Feature_Request">Feature Request</msg>
   <msg key="Ticket_type_Permission_Request">Permission Request</msg>

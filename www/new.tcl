@@ -79,6 +79,24 @@ if {![info exists task]} {
     ad_returnredirect [export_vars -base "/intranet-helpdesk/new" { {ticket_id $task(object_id)} {form_mode display}} ]
 }
 
+# Callback to redirect the new pages
+if {[info exists ticket_id]} {
+    set callback_ticket_id $ticket_id
+} else {
+    set callback_ticket_id ""
+}
+
+callback im_helpdesk_ticket_new_redirect -ticket_id $callback_ticket_id \
+    -ticket_name $ticket_name \
+    -ticket_nr $ticket_nr \
+    -ticket_sla_id $ticket_sla_id \
+    -ticket_customer_contact_id $ticket_customer_contact_id \
+    -ticket_status_id $ticket_status_id \
+    -ticket_type_id $ticket_type_id \
+    -view_name $view_name \
+    -escalate_from_ticket_id $escalate_from_ticket_id \
+    -return_url $return_url 
+
 # ------------------------------------------------------------------
 # Default & Security
 # ------------------------------------------------------------------
@@ -480,9 +498,9 @@ set ttt {
 }
 # customer_contact_options
 #
-if {$user_can_create_new_customer_p} {
-    set customer_contact_options [linsert $customer_contact_options 0 [list "Create New Customer Contact" "new"]]
-}
+#if {$user_can_create_new_customer_p} {
+#    set customer_contact_options [linsert $customer_contact_options 0 [list "Create New Customer Contact" "new"]]
+#}
 set customer_contact_options [linsert $customer_contact_options 0 [list "" ""]]
 
 
@@ -612,7 +630,10 @@ ad_form -extend -name helpdesk_ticket -on_request {
 	# ad_return_complaint 1 [lang::message::lookup "" intranet-helpdesk.TicketNotFound "Ticket not found."]
 	# return 
     }
-
+} -new_request {
+    if {![exists_and_not_null ticket_customer_contact_id]} {
+	set ticket_customer_contact_id [ad_conn user_id]
+    }
 } -select_query {
 
 	select	t.*,
@@ -977,7 +998,7 @@ append admin_html "</ul>"
 # ----------------------------------------------------------
 
 # Compile and execute the formtemplate if advanced filtering is enabled.
-eval [template::adp_compile -string {<formtemplate id="ticket_filter"></formtemplate>}]
+eval [template::adp_compile -string {<formtemplate style="tiny-plain" id="ticket_filter"></formtemplate>}]
 set form_html $__adp_output
 
 set left_navbar_html "

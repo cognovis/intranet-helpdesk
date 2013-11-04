@@ -50,10 +50,6 @@ foreach ticket_id $tid {
 	    	if { "" == $ticket_assignee_id } {
 			set ticket_assignee [parameter::get -package_id [apm_package_id_from_key acs-kernel] -parameter "SystemOwner" -default ""]
 		}
-
-	        # tmp patch due to issues with parameter
-	        set ticket_assignee "klaus.hofeditz@project-open.com"
-
 	        set ticket_assignee_id [db_string get_ticket_asignee_id "select party_id from parties where email = :ticket_assignee" -default 0]
 	    	if { "" == $ticket_assignee_id  } {
 			ad_return_complaint 1 [lang::message::lookup "" intranet-helpdesk.Err_Mess_No_Email_Found "Ticket prio changed, but could not find any recipient to notify. Please contact the owner of the helpdesk"]

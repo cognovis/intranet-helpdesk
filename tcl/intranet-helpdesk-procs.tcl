@@ -343,6 +343,38 @@ ad_proc -public im_ticket_navbar {
 # Components
 # ---------------------------------------------------------------------
 
+ad_proc -public im_ticket_project_component {
+    -object_id
+} {
+    Returns a HTML component to show all project tickets related to a project
+} {
+    set params [list \
+		    [list base_url "/intranet-helpdesk/"] \
+		    [list object_id $object_id] \
+		    [list return_url [im_url_with_query]] \
+		    ]
+
+    set result [ad_parse_template -params $params "/packages/intranet-helpdesk/www/tickets-list-component"]
+    return [string trim $result]
+}
+
+ad_proc -public im_ticket_info_component {
+    ticket_id
+    return_url
+} {
+
+    set params [list  [list base_url "/intranet-helpdesk/"]  [list ticket_id  $ticket_id] [list return_url [im_url_with_query]]]
+    
+    set result [ad_parse_template -params $params "/packages/intranet-helpdesk/lib/ticket-info"]
+
+    return [string trim $result]
+}
+
+
+# ----------------------------------------------------------------------
+# Components
+# ---------------------------------------------------------------------
+
 namespace eval im_ticket {
 
     ad_proc -public next_ticket_nr {
@@ -462,23 +494,25 @@ namespace eval im_ticket {
         -ticket_sla_id:required
         { -ticket_name "" }
         { -ticket_nr "" }
-	{ -ticket_customer_contact_id "" }
-	{ -ticket_type_id "" }
-	{ -ticket_status_id "" }
-	{ -ticket_start_date "" }
-	{ -ticket_end_date "" }
-	{ -ticket_note "" }
-	{ -creation_date "" }
-	{ -creation_user "" }
-	{ -creation_ip "" }
-	{ -context_id "" }
+        { -ticket_customer_contact_id "" }
+        { -ticket_type_id "" }
+        { -ticket_status_id "" }
+        { -ticket_start_date "" }
+        { -ticket_end_date "" }
+        { -ticket_note "" }
+        { -creation_date "" }
+        { -creation_user "" }
+        { -creation_ip "" }
+        { -context_id "" }
+        -no_audit:boolean
+        -no_notification:boolean
     } {
-	Create a new ticket.
-	This procedure deals with the base ticket creation.
-	DynField values need to be stored extract.
-
-	@author frank.bergmann@project-open.com
-	@return <code>ticket_id</code> of the newly created project or "" in case of an error.
+        Create a new ticket.
+        This procedure deals with the base ticket creation.
+        DynField values need to be stored extract.
+        
+        @author frank.bergmann@project-open.com
+        @return <code>ticket_id</code> of the newly created project or "" in case of an error.
     } {
 	set ticket_id ""
 	set current_user_id $creation_user
@@ -563,17 +597,18 @@ namespace eval im_ticket {
                         :topic_type_id, :topic_status_id, :topic_owner_id,
                         :ticket_name, :ticket_note
                 )
-	    }
+            }
 
-	    # Subscribe owner to Notifications	    
-	    im_ticket::notification_subscribe -ticket_id $ticket_id -user_id $current_user_id
-
-	} on_error {
-	    ad_return_complaint 1 "<b>Error inserting new ticket</b>:<br>&nbsp;<br>
+            # Subscribe owner to Notifications	    
+            if {!$no_notification_p} {
+                im_ticket::notification_subscribe -ticket_id $ticket_id -user_id $current_user_id
+            }
+        } on_error {
+            ad_return_complaint 1 "<b>Error inserting new ticket</b>:<br>&nbsp;<br>
 	    <pre>$errmsg</pre>"
-	}
-
-	return $ticket_id 
+        }
+        
+        return $ticket_id 
     }
 
 
@@ -1230,9 +1265,9 @@ ad_proc -public im_helpdesk_ticket_component {
 	        im_category_from_id(t.ticket_status_id) as ticket_status,
 	        im_category_from_id(t.ticket_prio_id) as ticket_prio,
 	        to_char(end_date, 'HH24:MI') as end_date_time,
-		im_name_from_user_id(t.ticket_assignee_id) as ticket_assignee_name,
-		im_name_from_user_id(t.ticket_customer_contact_id) as ticket_customer_contact_name
-                $extra_select
+			im_name_from_user_id(t.ticket_assignee_id) as ticket_assignee_name,
+			im_name_from_user_id(t.ticket_customer_contact_id) as ticket_customer_contact_name
+            $extra_select
 	FROM
 		$perm_sql p,
 		im_tickets t,
@@ -1495,7 +1530,6 @@ ad_proc -public im_helpdesk_related_tickets_component {
 
 
 
-
 # ---------------------------------------------------------------
 # Nuke
 # ---------------------------------------------------------------
@@ -1511,4 +1545,3 @@ ad_proc im_ticket_nuke {
     ns_log Notice "im_ticket_nuke ticket_id=$ticket_id"
     return [im_project_nuke -current_user_id $current_user_id $ticket_id]
 }
-
