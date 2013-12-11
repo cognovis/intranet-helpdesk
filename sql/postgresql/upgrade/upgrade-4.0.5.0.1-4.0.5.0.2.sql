@@ -1,5 +1,5 @@
 -- 4.0.5.0.1-4.0.5.0.2.sql
-SELECT acs_log__debug('/packages/intranet-helpdesk/sql/postgresql/upgrade/4.0.5.0.1-4.0.5.0.2.sql','');
+SELECT acs_log__debug('/packages/intranet-helpdesk/sql/postgresql/upgrade/upgrade-4.0.5.0.1-4.0.5.0.2.sql','');
 
 
 -- A report that shows activities per day
