@@ -5,7 +5,6 @@
 # All rights reserved. Please check
 # http://www.project-open.com/license/ for details.
 
-
 # -----------------------------------------------------------
 # Page Head
 #
@@ -656,9 +655,10 @@ ad_form -extend -name helpdesk_ticket -on_request {
 } -new_data {
 
     ns_log Notice "new: new_data"
+
     set message ""
-    if {[info exists ticket_note]} { append message $ticket_note }
-    if {[info exists ticket_description]} { append message $ticket_description }
+    if {[info exists ticket_note]} { append message $ticket_note } else { set ticket_note "" }
+    if {[info exists ticket_description]} { append message $ticket_description } else { set ticket_description "" }
     if {![exists_and_not_null project_name]} { set project_name $ticket_name}
 
     ns_log notice  "intranet-helpdesk::new.tcl: ticket_sla_id: $ticket_sla_id, ticket_name: $ticket_name, ticket_nr: $ticket_nr" 
@@ -683,13 +683,26 @@ ad_form -extend -name helpdesk_ticket -on_request {
 	-object_id $ticket_id \
 	-form_id helpdesk_ticket
 
+    # NOTIFICATION
+    if {[catch {
+        set sla_name [db_string get_data "select project_name from im_projects where project_id = :ticket_sla_id" -default 0]
+    } err_msg]} {
+        global errorInfo
+        ns_log Error $errorInfo
+        set sla_name ""
+    }
+
+    set ticket_link "[parameter::get -package_id [apm_package_id_from_key acs-kernel] -parameter "SystemURL" -default ""]/intranet-helpdesk/new?form_mode=display&ticket_id=$ticket_id"
+    set notif_message [lang::message::lookup "" intranet-helpdesk.NotificationBody "A new ticket has been created:\n\nName: %ticket_name%\nLink: %ticket_link%\nNote: %ticket_note%\nDescription: %ticket_description%\n "]
+
     notification::new \
         -type_id [notification::type::get_type_id -short_name ticket_notif] \
         -object_id $ticket_id \
         -response_id "" \
-        -notif_subject $ticket_name \
-        -notif_text $message
+        -notif_subject [lang::message::lookup "" intranet-helpdesk.NotificationSubject "Ticket Notification for SLA: %sla_name%"] \
+        -notif_text $notif_message
 
+    # TICKET ASSIGNMENTS 
     # For smaller organization this is probably all what's needed.
     # Employees that can 'handle' tickets will be simply added to the SLA project 
     # Whenever a new ticket has been created, these employees get auto-assigned to the ticket. 
@@ -719,9 +732,39 @@ ad_form -extend -name helpdesk_ticket -on_request {
 			) and
 			rels.object_id_two in (select member_id from group_distinct_member_map m where group_id = :employee_group_id);
 	"
+	db_foreach r $sql {
+	    im_biz_object_add_role $party_id $ticket_id 1300
+	}
     }
-    db_foreach r $sql {
-	im_biz_object_add_role $party_id $ticket_id 1300
+
+    # Let's do the same for customer accounts related to the SLA 
+    if { [parameter::get -package_id [apm_package_id_from_key intranet-helpdisk] -parameter "AutoAssignCustomerMembersOfSLAToTicket" -default 1]  } {
+	# Get all customer_id's from SLA
+	set customer_group_id [im_customer_group_id]
+        set sql "
+                select
+                     rels.object_id_two as party_id
+                from
+                     acs_rels rels
+                     LEFT OUTER JOIN im_biz_object_members bo_rels ON (rels.rel_id = bo_rels.rel_id)
+                     LEFT OUTER JOIN im_categories c ON (c.category_id = bo_rels.object_role_id)
+                where
+                         rels.object_id_one = :ticket_sla_id and
+                         rels.object_id_two in (select party_id from parties) and
+                         rels.object_id_two not in (
+                         -- Exclude banned or deleted users
+                         select     m.member_id
+                         from       group_member_map m, membership_rels mr
+                         where      m.rel_id = mr.rel_id and
+                                    m.group_id = acs__magic_object_id('registered_users') and
+                                    m.container_id = m.group_id and
+                                    mr.member_state != 'approved'
+                        ) and
+                        rels.object_id_two in (select member_id from group_distinct_member_map m where group_id = :customer_group_id);
+        "
+	db_foreach r $sql {
+	    im_biz_object_add_role $party_id $ticket_id 1300
+	}
     }
 
     if {[info exists escalate_from_ticket_id] && 0 != $escalate_from_ticket_id} {
@@ -903,7 +946,7 @@ if {[im_permission $current_user_id "view_tickets_all"]} {
 lappend mine_p_options [list [lang::message::lookup "" intranet-helpdesk.My_group "My Group"] "queue"]
 lappend mine_p_options [list [lang::message::lookup "" intranet-helpdesk.Mine "Mine"] "mine"]
 
-set ticket_member_options [util_memoize "db_list_of_lists ticket_members {
+set ticket_member_options [util_memoize [list db_list_of_lists ticket_members "
 	select  distinct
 		im_name_from_user_id(object_id_two) as user_name,
 		object_id_two as user_id
@@ -911,7 +954,7 @@ set ticket_member_options [util_memoize "db_list_of_lists ticket_members {
 		im_tickets p
 	where   r.object_id_one = p.ticket_id
 	order by user_name
-}" 300]
+"] 300]
 set ticket_member_options [linsert $ticket_member_options 0 [list [_ intranet-core.All] ""]]
 
 set ticket_queue_options [im_helpdesk_ticket_queue_options]
